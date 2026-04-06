@@ -1,4 +1,26 @@
+[build]
+  # Functions များရှိရာ folder ကိုညွှန်ပြခြင်း
+  functions = "netlify/functions"
+  # Root directory ရှိ ဖိုင်များကို publish လုပ်ခြင်း
+  publish = "."
+
+[functions]
+  node_bundler = "esbuild"
+
+# APK ဖိုင်အတွက် Direct Download ကျစေမည့် Header သတ်မှတ်ချက်
+[[headers]]
+  for = "/Phoenix_VPN.apk"
+  [headers.values]
+    # Android App ဖိုင်ဖြစ်ကြောင်း Browser ကို အသိပေးခြင်း
+    Content-Type = "application/vnd.android.package-archive"
+    # Browser ကို ဖိုင်အဖြစ် တန်းဒေါင်းခိုင်းခြင်း (attachment သုံးရပါမည်)
+    Content-Disposition = "attachment; filename=Phoenix_VPN.apk"
+    # Cache ကြောင့် ဖိုင်အဟောင်းကြီး ဖြစ်မနေစေရန်
+    Cache-Control = "no-cache, no-store, must-revalidate"
+    # လုံခြုံရေးအတွက် sniffing ပိတ်ခြင်း
+    X-Content-Type-Options = "nosniff"
+
 [[redirects]]
-  from = "/api/generate"
-  to = "/.netlify/functions/generate"
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
   status = 200
