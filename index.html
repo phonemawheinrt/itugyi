@@ -131,83 +131,7 @@
   </div>
 </div>
 <div id="toast"></div>
-<script>
-let configData = null;
-
-function showToast(msg, type) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.className = (type ? type+' ' : '')+'show';
-  setTimeout(() => { t.className = type||''; }, 3200);
-}
-
-async function handleGenerate() {
-  const btn = document.getElementById('btn-generate');
-  btn.disabled = true;
-  document.getElementById('icon-zap').classList.add('hidden');
-  document.getElementById('icon-spin').classList.remove('hidden');
-  document.getElementById('btn-label').textContent = 'Generating...';
-  try {
-    const res = await fetch('/.netlify/functions/generate', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'}
-    });
-    if (!res.ok) {
-      let msg = 'Failed to generate';
-      try { const d = await res.json(); msg = d.message||msg; } catch(_){}
-      throw new Error(msg);
-    }
-    const data = await res.json();
-    configData = data.config;
-    const qrDiv = document.getElementById('qrcode');
-    qrDiv.innerHTML = '';
-    new QRCode(qrDiv, {text:configData,width:220,height:220,colorDark:'#09090b',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});
-    resetDownloadBtn();
-    document.getElementById('view-generate').classList.add('hidden');
-    document.getElementById('view-result').classList.remove('hidden');
-  } catch(err) {
-    showToast(err.message||'Failed','error');
-  } finally {
-    btn.disabled = false;
-    document.getElementById('icon-zap').classList.remove('hidden');
-    document.getElementById('icon-spin').classList.add('hidden');
-    document.getElementById('btn-label').textContent = 'Generate WGCF';
-  }
-}
-
-function handleDownload() {
-  if (!configData) return;
-  try {
-    const blob = new Blob([configData],{type:'application/octet-stream'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href=url; a.download='phoenix-tugyi.conf';
-    document.body.appendChild(a); a.click();
-    document.body.removeChild(a); URL.revokeObjectURL(url);
-    document.getElementById('btn-download').classList.add('downloaded');
-    document.getElementById('icon-dl').classList.add('hidden');
-    document.getElementById('icon-dl-ok').classList.remove('hidden');
-    const lbl = document.getElementById('dl-label');
-    lbl.textContent='Downloaded!'; lbl.style.color='#a7f3d0';
-    showToast('Downloaded phoenix-tugyi.conf','');
-  } catch(err){ showToast('Download failed','error'); }
-}
-
-function resetDownloadBtn() {
-  document.getElementById('btn-download').className='btn-action';
-  document.getElementById('icon-dl').classList.remove('hidden');
-  document.getElementById('icon-dl-ok').classList.add('hidden');
-  const lbl=document.getElementById('dl-label'); lbl.textContent='Download .conf'; lbl.style.color='white';
-}
-function handleReset() {
-  configData=null;
-  document.getElementById('qrcode').innerHTML='';
-  document.getElementById('view-result').classList.add('hidden');
-  document.getElementById('view-generate').classList.remove('hidden');
-}
-</script>
-</body>
-</html>        </div>
+        </div>
         <div id="view-result" class="result-view hidden">
           <div class="qr-container"><div id="qrcode"></div></div>
           <div class="btn-gap">
@@ -237,6 +161,7 @@ function handleReset() {
 <div id="toast"></div>
 <script>
 let configData = null;
+let configFilename = 'phoenix-tugyi.conf';
 
 function showToast(msg, type) {
   const t = document.getElementById('toast');
@@ -263,6 +188,7 @@ async function handleGenerate() {
     }
     const data = await res.json();
     configData = data.config;
+    configFilename = data.filename || 'phoenix-tugyi.conf';
     const qrDiv = document.getElementById('qrcode');
     qrDiv.innerHTML = '';
     new QRCode(qrDiv, {text:configData,width:220,height:220,colorDark:'#09090b',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});
@@ -285,7 +211,7 @@ function handleDownload() {
     const blob = new Blob([configData],{type:'application/octet-stream'});
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href=url; a.download='phoenix-tugyi.conf';
+    a.href=url; a.download=configFilename;
     document.body.appendChild(a); a.click();
     document.body.removeChild(a); URL.revokeObjectURL(url);
     document.getElementById('btn-download').classList.add('downloaded');
@@ -293,7 +219,7 @@ function handleDownload() {
     document.getElementById('icon-dl-ok').classList.remove('hidden');
     const lbl = document.getElementById('dl-label');
     lbl.textContent='Downloaded!'; lbl.style.color='#a7f3d0';
-    showToast('Downloaded phoenix-tugyi.conf','');
+    showToast('Downloaded '+configFilename,'');
   } catch(err){ showToast('Download failed','error'); }
 }
 
