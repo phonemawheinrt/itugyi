@@ -76,7 +76,7 @@ PersistentKeepalive = 20`;
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify({ config: finalConfig }),
+      body: JSON.stringify({ config: finalConfig, filename: `${randomIP}.conf` }),
     };
 
   } catch (err) {
