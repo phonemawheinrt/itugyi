@@ -7,11 +7,23 @@ function generateKeypair() {
   return { publicKey: pub, privateKey: priv };
 }
 
-async function registerDevice(publicKey) {
-  const res = await fetch("https://api.cloudflareclient.com/v0a2158/reg", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
+exports.handler = async (event) => {
+  const headers = {
+    "Content-Type": "application/json",
+    "Access-Control-Allow-Origin": "*",
+  };
+
+  if (event.httpMethod === "OPTIONS") {
+    return { statusCode: 204, headers, body: "" };
+  }
+
+  try {
+    // Random endpoint: 162.159.192.1:500 to 162.159.192.20:500
+    const randomIP = `162.159.192.${Math.floor(Math.random() * 20) + 1}`;
+
+    const { publicKey, privateKey } = generateKeypair();
+
+    const body = JSON.stringify({
       key: publicKey,
       install_id: crypto.randomUUID(),
       fcm_token: "",
@@ -19,18 +31,29 @@ async function registerDevice(publicKey) {
       model: "PC",
       serial_number: crypto.randomUUID(),
       locale: "en_US",
-    }),
-  });
-  return await res.json();
-}
+    });
 
-exports.handler = async () => {
-  try {
-    const endpoints = Array.from({ length: 20 }, (_, i) => `162.159.192.${i + 1}`);
-    const endpoint = endpoints[Math.floor(Math.random() * endpoints.length)];
+    // Retry with exponential backoff (1s → 2s → 4s) for 429/5xx
+    let data;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      const res = await fetch("https://api.cloudflareclient.com/v0a2158/reg", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body,
+      });
 
-    const { publicKey, privateKey } = generateKeypair();
-    const data = await registerDevice(publicKey);
+      if (res.ok) {
+        data = await res.json();
+        break;
+      }
+
+      if ((res.status === 429 || res.status >= 500) && attempt < 3) {
+        await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt - 1)));
+        continue;
+      }
+
+      throw new Error(`API error ${res.status}`);
+    }
 
     const peer = data.config.peers[0];
     const iface = data.config.interface;
@@ -44,27 +67,23 @@ MTU = 1280
 [Peer]
 PublicKey = ${peer.public_key}
 AllowedIPs = 0.0.0.0/0, ::/0
-Endpoint = ${endpoint}:500
-PersistentKeepalive = 20
-`;
+Endpoint = ${randomIP}:500
+PersistentKeepalive = 20`;
 
     // 🔥 မူရင်း WireGuard အက်ပ် မဖတ်နိုင်အောင် ရှေ့မှာ PHX-VPN-ONLY ထည့်လိုက်တယ် 🔥
     const finalConfig = 'PHX-VPN-ONLY\n' + configStr;
 
     return {
       statusCode: 200,
-      headers: {
-        "Content-Type": "text/plain", // .conf ဖိုင်ကို စာသားအဖြစ် ဖတ်နိုင်ရန်
-        "Content-Disposition": `attachment; filename="phoenix-tugyi.conf"`, // ဖိုင်နာမည်ကို ပုံသေပေးထားသည်
-        "Access-Control-Allow-Origin": "*",
-      },
-      body: finalConfig, // PHX-VPN-ONLY ပါဝင်သော config အသစ်
+      headers,
+      body: JSON.stringify({ config: finalConfig }),
     };
+
   } catch (err) {
     return {
       statusCode: 500,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ error: err.message }),
+      headers,
+      body: JSON.stringify({ message: err.message || "Failed to generate configuration." }),
     };
   }
 };
