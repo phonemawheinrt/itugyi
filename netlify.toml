@@ -1,6 +1,6 @@
 [build]
   # Functions များရှိရာ folder ကိုညွှန်ပြခြင်း
-  functions = "netlify/functions"
+  functions = "netlify/function"
   # Root directory ရှိ ဖိုင်များကို publish လုပ်ခြင်း
   publish = "."
 
